@@ -1,59 +1,110 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# CBR Currency API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+**API курсов ЦБ РФ: кэш (Redis), очередь (Redis), опциональное хранение в БД.**
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Описание
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Проект — **только backend API** (без фронтенда). Загружает ежедневные курсы из XML API ЦБ РФ, кэширует ответы в Redis и может сохранять курсы в PostgreSQL. Очередь обрабатывает задачи синхронизации. Основной эндпоинт возвращает курс на дату, предыдущий торговый день и **дельту** (изменение к предыдущему дню).
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## Требования
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+- **Docker** и **Docker Compose**
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Скопируйте `.env.example` в `.env` и задайте минимум `APP_KEY` (и учётные данные БД при необходимости).
 
-## Laravel Sponsors
+---
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Запуск через Docker
 
-### Premium Partners
+Запуск всех сервисов (app, nginx, postgres, redis, worker):
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+```bash
+docker-compose up -d
+```
 
-## Contributing
+API доступен по адресу **http://localhost:8080** (nginx проксирует на php-fpm).
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+---
 
-## Code of Conduct
+## Миграции
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Выполните миграции в контейнере приложения:
 
-## Security Vulnerabilities
+```bash
+docker-compose exec app php artisan migrate
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+---
 
-## License
+## Синхронизация истории курсов
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Чтобы заполнить БД (и кэш) историческими курсами, выполните команду синхронизации. Она **ставит в очередь** задачи по дням; контейнер **worker** их обрабатывает.
+
+Пример для USD за последние 180 дней:
+
+```bash
+docker-compose exec app php artisan app:sync-currency-history USD --days=180
+```
+
+Можно указать другой код валюты (например EUR) и изменить `--days`.
+
+---
+
+## API: GET /api/rates
+
+**Пример запроса:**
+
+```http
+GET /api/rates?date=2025-02-20&currency_code=USD&base_currency_code=RUR
+```
+
+**Параметры запроса:**
+
+| Параметр              | Обязательный | Описание                                           |
+|-----------------------|--------------|----------------------------------------------------|
+| `date`                | да           | Дата в формате `Y-m-d` (например 2025-02-20)       |
+| `currency_code`       | да           | Код валюты (например USD, EUR)                     |
+| `base_currency_code`  | нет          | Базовая валюта; по умолчанию `RUR` (поддерживается только RUR) |
+
+**Пример ответа:**
+
+```json
+{
+  "date": "2025-02-20",
+  "currency_code": "USD",
+  "base_currency_code": "RUR",
+  "rate": 98.1234,
+  "previous_trade_date": "2025-02-19",
+  "delta": 0.5678
+}
+```
+
+- **rate** — курс на запрошенную дату (из БД или ЦБ с кэшем).
+- **previous_trade_date** — последняя дата до запрошенной, по которой есть курс (предыдущий торговый день).
+- **delta** — разница между текущим курсом и курсом предыдущего торгового дня (`rate − previous_rate`).
+
+Если курс на запрошенную дату не найден, API возвращает **404**. Проверка здоровья: **GET /up**.
+
+---
+
+## Проверка
+
+Чтобы убедиться, что всё работает, используйте Docker (приложение рассчитано на PostgreSQL и Redis; запуск `php artisan serve` локально без них приведёт к ошибке).
+
+1. **Запуск:** `docker-compose up -d`
+
+2. **Миграции:** `docker-compose exec app php artisan migrate`
+
+3. **Синхронизация данных (по желанию, но рекомендуется):**  
+   `docker-compose exec app php artisan app:sync-currency-history USD --days=30`  
+   Подождите 30–60 секунд, пока воркер обработает задачи.
+
+4. **Проверка здоровья:** `curl http://localhost:8080/up` — в ответе должно быть `OK`.
+
+5. **API курсов:**  
+   `curl "http://localhost:8080/api/rates?date=2025-02-20&currency_code=USD&base_currency_code=RUR"`  
+   Ожидается JSON с полями `rate`, `previous_trade_date`, `delta`.

@@ -18,6 +18,5 @@ final readonly class CbrRateDto
         public string $baseCurrencyCode = 'RUR',
         public ?string $name = null,
         public ?string $numCode = null,
-    ) {
-    }
+    ) {}
 }

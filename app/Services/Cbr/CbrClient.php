@@ -31,12 +31,12 @@ final class CbrClient implements CbrClientInterface
      * Fetch all rates for the given date (Y-m-d).
      * Uses Redis cache: key cbr:rates:{version}:{date}, TTL 24h.
      *
-     * @param string $date Date in Y-m-d format
+     * @param  string  $date  Date in Y-m-d format
      * @return list<CbrRateDto>
      */
     public function getRatesByDate(string $date): array
     {
-        $cacheKey = self::CACHE_KEY_PREFIX . self::CACHE_VERSION . ':' . $date;
+        $cacheKey = self::CACHE_KEY_PREFIX.self::CACHE_VERSION.':'.$date;
 
         $cached = Cache::get($cacheKey);
         if (is_array($cached)) {
@@ -53,9 +53,8 @@ final class CbrClient implements CbrClientInterface
      * Fetch rates for one currency on the given date.
      * Returns null if not found (e.g. weekend with no data).
      *
-     * @param string $date         Date in Y-m-d format
-     * @param string $currencyCode e.g. USD
-     * @return CbrRateDto|null
+     * @param  string  $date  Date in Y-m-d format
+     * @param  string  $currencyCode  e.g. USD
      */
     public function getRateByDateAndCode(string $date, string $currencyCode): ?CbrRateDto
     {
@@ -72,7 +71,7 @@ final class CbrClient implements CbrClientInterface
     /**
      * Perform HTTP request, convert encoding, parse XML, return DTOs.
      *
-     * @param string $date Y-m-d
+     * @param  string  $date  Y-m-d
      * @return list<CbrRateDto>
      */
     private function fetchAndParse(string $date): array
@@ -102,6 +101,7 @@ final class CbrClient implements CbrClientInterface
 
         if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) {
             Log::warning('CBR request failed', ['url' => $url, 'status' => $response->getStatusCode()]);
+
             return [];
         }
 
@@ -109,6 +109,7 @@ final class CbrClient implements CbrClientInterface
         $utf8 = $this->convertToUtf8($body);
         if ($utf8 === null) {
             Log::warning('CBR response encoding conversion failed', ['url' => $url]);
+
             return [];
         }
 
@@ -155,6 +156,7 @@ final class CbrClient implements CbrClientInterface
             $doc = new \SimpleXMLElement($xml);
         } catch (\Exception $e) {
             Log::warning('CBR XML parse failed', ['message' => $e->getMessage()]);
+
             return [];
         } finally {
             libxml_clear_errors();
@@ -163,7 +165,7 @@ final class CbrClient implements CbrClientInterface
 
         $rates = [];
         $list = $doc->xpath('//ValCurs/Valute') ?: $doc->xpath('//Valute');
-        if ($list === false || $list === []) {
+        if (! is_array($list) || $list === []) {
             return [];
         }
 

@@ -22,7 +22,7 @@ final class FetchCurrencyRateJobTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_handle_saves_rate_via_updateOrCreate_when_client_returns_dto(): void
+    public function test_handle_saves_rate_via_update_or_create_when_client_returns_dto(): void
     {
         $date = '2025-02-20';
         $dto = new CbrRateDto(

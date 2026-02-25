@@ -86,7 +86,7 @@ final class RatesApiTest extends TestCase
             'nominal' => 1,
         ]);
 
-        $response = $this->getJson('/api/rates?date=' . $date . '&currency_code=USD&base_currency_code=RUR');
+        $response = $this->getJson('/api/rates?date='.$date.'&currency_code=USD&base_currency_code=RUR');
 
         $response->assertStatus(200)
             ->assertJsonPath('date', $date)

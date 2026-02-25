@@ -31,8 +31,7 @@ final class FetchCurrencyRateJob implements ShouldQueue
     public function __construct(
         public string $date,
         public string $currencyCode,
-    ) {
-    }
+    ) {}
 
     /**
      * Задержка перед повторной попыткой (секунды): 1 мин, затем 5 мин.

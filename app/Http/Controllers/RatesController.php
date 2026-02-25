@@ -18,8 +18,7 @@ final class RatesController extends Controller
 {
     public function __construct(
         private CbrClientInterface $cbrClient,
-    ) {
-    }
+    ) {}
 
     /**
      * GET /api/rates?date=Y-m-d&currency_code=USD&base_currency_code=RUR
@@ -57,6 +56,7 @@ final class RatesController extends Controller
 
     /**
      * Find rate for the given date (DB first, then CBR with cache).
+     *
      * @return array{rate: float|string, date: string}|null
      */
     private function findRateForDate(string $date, string $currencyCode, string $baseCurrencyCode): ?array
@@ -81,6 +81,7 @@ final class RatesController extends Controller
     /**
      * Find rate for the previous trading day (last date < $date with data).
      * First tries one DB query (index-friendly); if no data in DB, walks back via CBR (cache).
+     *
      * @return array{date: string|null, rate: float|null}
      */
     private function findPreviousTradingDayRate(string $date, string $currencyCode, string $baseCurrencyCode): array
@@ -92,7 +93,7 @@ final class RatesController extends Controller
             ->first();
 
         if ($previousRecord !== null) {
-            $prevDate = $previousRecord->date->format('Y-m-d');
+            $prevDate = Carbon::parse($previousRecord->date)->format('Y-m-d');
 
             return [
                 'date' => $prevDate,

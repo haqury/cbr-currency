@@ -4,6 +4,19 @@
 
 ---
 
+## Быстрый старт (проверить за 2 минуты)
+
+1. `docker-compose up -d`
+2. `docker-compose exec app php artisan key:generate` (если ещё не делали)
+3. `docker-compose exec app php artisan migrate`
+4. `docker-compose exec app php artisan app:sync-currency-history USD --days=7`
+5. Подождать ~30 сек, пока воркер обработает задачи
+6. `curl "http://localhost:8080/api/rates?date=2025-02-20&currency_code=USD"`
+
+Ожидается JSON с полями `rate`, `previous_trade_date`, `delta`.
+
+---
+
 ## Описание
 
 Проект — **только backend API** (без фронтенда). Загружает ежедневные курсы из XML API ЦБ РФ, кэширует ответы в Redis и может сохранять курсы в PostgreSQL. Очередь обрабатывает задачи синхронизации. Основной эндпоинт возвращает курс на дату, предыдущий торговый день и **дельту** (изменение к предыдущему дню).
@@ -14,8 +27,7 @@
 
 - **Docker** и **Docker Compose**
 
-Скопируйте `.env.example` в `.env` и задайте минимум `APP_KEY` (и учётные данные БД при необходимости). 
-Установить CBR_VERIFY_SSL=false
+Скопируйте `.env.example` в `.env` и задайте минимум `APP_KEY` (и учётные данные БД при необходимости). Для локальной разработки без CA bundle можно временно задать `CBR_VERIFY_SSL=false` в `.env`.
 
 ---
 
@@ -92,6 +104,14 @@ GET /api/rates?date=2025-02-20&currency_code=USD&base_currency_code=RUR
 
 ---
 
+## Архитектура
+
+Запрос к **GET /api/rates** обрабатывается контроллером `RatesController`; вход проверяется через Form Request `GetRatesRequest`. Данные берутся из БД (таблица `currency_rates`) или, при отсутствии, из API ЦБ РФ через `CbrClient` с кэшем Redis (ключ по дате). Поиск предыдущего торгового дня выполняется одним запросом к БД по индексу; при отсутствии данных в БД — перебор дней назад с обращением к ЦБ (кэш). Контракт `CbrClientInterface` позволяет подменять источник курсов в тестах и при смене провайдера.
+
+Синхронизация истории вынесена в команду `app:sync-currency-history`: она ставит в очередь Job'ы `FetchCurrencyRateJob` по одному на день; воркер (отдельный контейнер) обрабатывает их и сохраняет курсы в БД идемпотентно (`updateOrCreate` по дате, валюте и базе). Инфраструктура: **app** (PHP-FPM), **nginx**, **postgres**, **redis**, **worker** (queue:work); все сервисы в одной Docker-сети.
+
+---
+
 ## Проверка
 
 Чтобы убедиться, что всё работает, используйте Docker (приложение рассчитано на PostgreSQL и Redis; запуск `php artisan serve` локально без них приведёт к ошибке).
@@ -109,3 +129,11 @@ GET /api/rates?date=2025-02-20&currency_code=USD&base_currency_code=RUR
 5. **API курсов:**  
    `curl "http://localhost:8080/api/rates?date=2025-02-20&currency_code=USD&base_currency_code=RUR"`  
    Ожидается JSON с полями `rate`, `previous_trade_date`, `delta`.
+
+---
+
+## Тесты и CI
+
+Локально: `php artisan test` (нужны PHP 8.2+ и расширения из `composer.json`; БД и очередь в тестах — SQLite in-memory и sync). Форматирование кода: `composer run lint`. Статический анализ: `composer run stan`.
+
+В репозитории настроен **GitHub Actions**: на каждый push и pull request в `main`/`master` запускаются Pint (проверка стиля), PHPStan и тесты (`.github/workflows/tests.yml`). Окружение: PHP 8.2, без Docker и без внешних сервисов.

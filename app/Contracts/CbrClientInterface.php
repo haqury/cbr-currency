@@ -15,7 +15,7 @@ interface CbrClientInterface
     /**
      * Fetch all rates for the given date (Y-m-d).
      *
-     * @param string $date Date in Y-m-d format
+     * @param  string  $date  Date in Y-m-d format
      * @return list<CbrRateDto>
      */
     public function getRatesByDate(string $date): array;
@@ -24,9 +24,8 @@ interface CbrClientInterface
      * Fetch rate for one currency on the given date.
      * Returns null if not found (e.g. weekend).
      *
-     * @param string $date         Date in Y-m-d format
-     * @param string $currencyCode e.g. USD
-     * @return CbrRateDto|null
+     * @param  string  $date  Date in Y-m-d format
+     * @param  string  $currencyCode  e.g. USD
      */
     public function getRateByDateAndCode(string $date, string $currencyCode): ?CbrRateDto;
 }

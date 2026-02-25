@@ -36,12 +36,14 @@ final class SyncCurrencyHistoryCommand extends Command
 
         if ($days < 1) {
             $this->error('Option --days must be at least 1.');
+
             return self::FAILURE;
         }
 
         $code = strtoupper(trim($code));
         if ($code === '') {
             $this->error('Currency code cannot be empty.');
+
             return self::FAILURE;
         }
 
@@ -58,6 +60,7 @@ final class SyncCurrencyHistoryCommand extends Command
         }
 
         $this->info("Dispatched {$count} job(s) for {$code} (last {$days} days).");
+
         return self::SUCCESS;
     }
 }

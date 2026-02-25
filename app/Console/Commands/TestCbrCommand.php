@@ -29,10 +29,12 @@ final class TestCbrCommand extends Command
 
         if ($dto === null) {
             $this->warn('No rate found (e.g. weekend or invalid date/code).');
+
             return self::SUCCESS;
         }
 
         $this->line("Rate: {$dto->rate} (nominal: {$dto->nominal}, base: {$dto->baseCurrencyCode})");
+
         return self::SUCCESS;
     }
 }

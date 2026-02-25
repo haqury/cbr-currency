@@ -80,10 +80,7 @@ final class CbrClient implements CbrClientInterface
         $dateReq = $this->formatDateForCbr($date);
         $url = sprintf(self::URL_TEMPLATE, $dateReq);
 
-        // Only verify SSL when explicitly enabled (e.g. production with CBR_VERIFY_SSL=true).
-        // Default: no verification so local/dev works without CA bundle (e.g. Windows).
-        $verifySsl = strtolower((string) (env('CBR_VERIFY_SSL') ?? '')) === 'true'
-            || filter_var(env('CBR_VERIFY_SSL'), FILTER_VALIDATE_BOOLEAN) === true;
+        $verifySsl = config('cbr.verify_ssl', true);
 
         $client = new Client(['timeout' => 15]);
         $requestOptions = [

@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Contracts\CbrClientInterface;
+use App\Http\Requests\GetRatesRequest;
 use App\Models\CurrencyRate;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 /**
@@ -16,8 +16,6 @@ use Illuminate\Support\Carbon;
  */
 final class RatesController extends Controller
 {
-    private const int MAX_DAYS_BACK = 365;
-
     public function __construct(
         private CbrClientInterface $cbrClient,
     ) {
@@ -26,31 +24,18 @@ final class RatesController extends Controller
     /**
      * GET /api/rates?date=Y-m-d&currency_code=USD&base_currency_code=RUR
      */
-    public function index(Request $request): JsonResponse
+    public function index(GetRatesRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'date' => ['required', 'date_format:Y-m-d'],
-            'currency_code' => ['required', 'string', 'max:10'],
-            'base_currency_code' => ['sometimes', 'string', 'max:10'],
-        ]);
-
-        $date = $validated['date'];
-        $currencyCode = strtoupper((string) $validated['currency_code']);
-        $baseCurrencyCode = strtoupper((string) ($validated['base_currency_code'] ?? 'RUR'));
-
-        // CBR provides rates only in RUR; other bases are not supported.
-        if ($baseCurrencyCode !== 'RUR' && $baseCurrencyCode !== 'RUB') {
-            return new JsonResponse([
-                'message' => 'Only base_currency_code RUR (or RUB) is supported.',
-            ], 422);
-        }
+        $date = $request->validated('date');
+        $currencyCode = $request->validated('currency_code');
+        $baseCurrencyCode = $request->validated('base_currency_code');
 
         $baseForStorage = $baseCurrencyCode === 'RUB' ? 'RUR' : $baseCurrencyCode;
 
         $currentRate = $this->findRateForDate($date, $currencyCode, $baseForStorage);
         if ($currentRate === null) {
             return new JsonResponse([
-                'message' => 'No rate found for the requested date.',
+                'message' => 'Курс на запрошенную дату не найден.',
             ], 404);
         }
 
@@ -119,7 +104,9 @@ final class RatesController extends Controller
         $dt = Carbon::parse($date);
         $daysChecked = 0;
 
-        while ($daysChecked < self::MAX_DAYS_BACK) {
+        $maxDaysBack = config('cbr.max_days_back', 365);
+
+        while ($daysChecked < $maxDaysBack) {
             $dt = $dt->subDay();
             $prevDate = $dt->format('Y-m-d');
             $daysChecked++;

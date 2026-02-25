@@ -95,10 +95,27 @@ final class RatesController extends Controller
 
     /**
      * Find rate for the previous trading day (last date < $date with data).
+     * First tries one DB query (index-friendly); if no data in DB, walks back via CBR (cache).
      * @return array{date: string|null, rate: float|null}
      */
     private function findPreviousTradingDayRate(string $date, string $currencyCode, string $baseCurrencyCode): array
     {
+        $previousRecord = CurrencyRate::forCurrency($currencyCode)
+            ->forBaseCurrency($baseCurrencyCode)
+            ->where('date', '<', $date)
+            ->orderByDesc('date')
+            ->first();
+
+        if ($previousRecord !== null) {
+            $prevDate = $previousRecord->date->format('Y-m-d');
+
+            return [
+                'date' => $prevDate,
+                'rate' => (float) $previousRecord->rate,
+            ];
+        }
+
+        // В БД нет более ранних дат — ищем по ЦБ (кэш), перебор дней назад.
         $dt = Carbon::parse($date);
         $daysChecked = 0;
 

@@ -21,19 +21,22 @@ final class CbrClient implements CbrClientInterface
 
     private const string CACHE_KEY_PREFIX = 'cbr:rates:';
 
+    /** Версия ключа кэша: при изменении структуры DTO увеличить, чтобы не читать старый формат. */
+    private const string CACHE_VERSION = 'v1';
+
     /** TTL in seconds (24 hours; historical data does not change). */
     private const int CACHE_TTL = 86400;
 
     /**
      * Fetch all rates for the given date (Y-m-d).
-     * Uses Redis cache: key cbr:rates:{date}, TTL 24h.
+     * Uses Redis cache: key cbr:rates:{version}:{date}, TTL 24h.
      *
      * @param string $date Date in Y-m-d format
      * @return list<CbrRateDto>
      */
     public function getRatesByDate(string $date): array
     {
-        $cacheKey = self::CACHE_KEY_PREFIX . $date;
+        $cacheKey = self::CACHE_KEY_PREFIX . self::CACHE_VERSION . ':' . $date;
 
         $cached = Cache::get($cacheKey);
         if (is_array($cached)) {

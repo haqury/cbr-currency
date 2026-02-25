@@ -16,6 +16,7 @@ use Illuminate\Support\Carbon;
 /**
  * Fetches CBR rate for one date and one currency, saves to currency_rates.
  * Idempotent: updateOrCreate by (date, currency_code, base_currency_code).
+ * Connection берётся из config (QUEUE_CONNECTION). Retry при временной недоступности ЦБ.
  */
 final class FetchCurrencyRateJob implements ShouldQueue
 {
@@ -24,11 +25,21 @@ final class FetchCurrencyRateJob implements ShouldQueue
     use Queueable;
     use SerializesModels;
 
+    /** Количество попыток при исключении (например, таймаут ЦБ). */
+    public int $tries = 3;
+
     public function __construct(
         public string $date,
         public string $currencyCode,
     ) {
-        $this->connection = extension_loaded('redis') ? 'redis' : 'sync';
+    }
+
+    /**
+     * Задержка перед повторной попыткой (секунды): 1 мин, затем 5 мин.
+     */
+    public function backoff(): array
+    {
+        return [60, 300];
     }
 
     public function handle(CbrClientInterface $client): void

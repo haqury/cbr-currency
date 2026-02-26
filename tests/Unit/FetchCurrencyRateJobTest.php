@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Unit;
 
 use App\Contracts\CbrClientInterface;
-use App\Exceptions\CurrencyCodeNotAllowedException;
 use App\Jobs\FetchCurrencyRateJob;
 use App\Models\CurrencyRate;
 use App\Services\Cbr\Dto\CbrRateDto;

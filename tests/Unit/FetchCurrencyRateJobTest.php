@@ -31,6 +31,7 @@ final class FetchCurrencyRateJobTest extends TestCase
     {
         $mock = Mockery::mock(CbrClientInterface::class);
         $mock->shouldReceive('getRateByDateAndCode')->andReturn($dto);
+        // @phpstan-ignore-next-line Mockery dynamic expectation API
         $mock->shouldReceive('getAvailableCurrencyCodes')->with($date)->andReturn($cbrCodes);
         $this->app->instance(CbrClientInterface::class, $mock);
     }
@@ -82,7 +83,9 @@ final class FetchCurrencyRateJobTest extends TestCase
         $dto2 = new CbrRateDto($date, 'USD', 99.0, 1, 'RUR');
 
         $mock = Mockery::mock(CbrClientInterface::class);
+        // @phpstan-ignore-next-line Mockery dynamic expectation API
         $mock->shouldReceive('getRateByDateAndCode')->with($date, 'USD')->andReturn($dto1, $dto2);
+        // @phpstan-ignore-next-line Mockery dynamic expectation API
         $mock->shouldReceive('getAvailableCurrencyCodes')->with($date)->andReturn(['USD', 'RUR']);
         $this->app->instance(CbrClientInterface::class, $mock);
 
@@ -97,8 +100,8 @@ final class FetchCurrencyRateJobTest extends TestCase
         $this->assertSame(99.0, (float) $record->rate);
     }
 
-    /** Проверяем: при DTO с кодом валюты не из ISO 4217 выбрасывается исключение, запись в БД не создаётся. */
-    public function test_handle_throws_when_currency_code_not_iso4217(): void
+    /** Проверяем: при DTO с кодом, которого нет в ISO, но он есть в списке ЦБ, запись создаётся (валиден по правилу ISO OR CBR). */
+    public function test_handle_saves_when_currency_code_only_in_cbr(): void
     {
         $date = '2025-02-20';
         $dto = new CbrRateDto(
@@ -111,10 +114,12 @@ final class FetchCurrencyRateJobTest extends TestCase
 
         $this->mockCbrClientForUpsert($date, $dto, ['FAKE']);
 
-        $job = new FetchCurrencyRateJob($date, 'USD');
-        $this->expectException(CurrencyCodeNotAllowedException::class);
+        $job = new FetchCurrencyRateJob($date, 'FAKE');
         $job->handle(app(CbrClientInterface::class), app(CurrencyRateService::class));
 
-        $this->assertDatabaseCount('currency_rates', 0);
+        $this->assertDatabaseHas('currency_rates', [
+            'currency_code' => 'FAKE',
+            'base_currency_code' => 'RUR',
+        ]);
     }
 }

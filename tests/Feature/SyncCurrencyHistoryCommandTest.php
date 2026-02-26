@@ -84,15 +84,18 @@ final class SyncCurrencyHistoryCommandTest extends TestCase
         Bus::assertNotDispatched(FetchCurrencyRateJob::class);
     }
 
-    /** Проверяем: при коде валюты, который ЦБ не публикует, команда завершается с ошибкой, джобы не диспатчатся. */
-    public function test_command_fails_when_currency_not_published_by_cbr(): void
+    /**
+     * Проверяем: при коде валюты, который ЦБ не публикует на дату, команда всё равно считается валидной,
+     * если код существует в ISO 4217 (правило ISO OR CBR), и джобы ставятся в очередь.
+     */
+    public function test_command_does_not_fail_when_currency_not_published_by_cbr_but_exists_in_iso(): void
     {
         Bus::fake();
         $this->mockCbrClientWithCodes(['USD', 'RUR']);
 
         $this->artisan('app:sync-currency-history', ['code' => 'CHF', '--days' => 1])
-            ->assertFailed();
+            ->assertSuccessful();
 
-        Bus::assertNotDispatched(FetchCurrencyRateJob::class);
+        Bus::assertDispatched(FetchCurrencyRateJob::class);
     }
 }

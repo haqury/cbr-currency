@@ -22,23 +22,25 @@ final class CurrencyRateService
     ) {}
 
     /**
-     * Validates that the currency code exists in ISO 4217 and is published by CBR for the given date.
-     * Throws CurrencyCodeNotAllowedException if validation fails.
+     * Validates that the currency code exists at least in one of:
+     * - ISO 4217 list (CurrencyCodeValidator)
+     * - CBR published codes for the given date.
+     *
+     * Throws CurrencyCodeNotAllowedException if it is missing from both.
      *
      * @throws CurrencyCodeNotAllowedException
      */
     public function validateCodeForDate(string $code, string $date): void
     {
         $code = strtoupper(trim($code));
-        if (! $this->isoValidator->isValid($code)) {
-            throw CurrencyCodeNotAllowedException::notIso4217($code);
-        }
+        $isIsoValid = $this->isoValidator->isValid($code);
 
         $cbrCodes = $this->cbrClient->getAvailableCurrencyCodes($date);
         $codeForCbr = $code === 'RUB' ? 'RUR' : $code;
         $inCbr = in_array($codeForCbr, $cbrCodes, true) || in_array($code, $cbrCodes, true);
-        if (! $inCbr) {
-            throw CurrencyCodeNotAllowedException::notPublishedByCbr($code, $date);
+
+        if (! $isIsoValid && ! $inCbr) {
+            throw CurrencyCodeNotAllowedException::notIso4217($code);
         }
     }
 

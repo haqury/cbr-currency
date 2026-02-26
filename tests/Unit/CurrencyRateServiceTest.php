@@ -26,12 +26,12 @@ final class CurrencyRateServiceTest extends TestCase
         parent::tearDown();
     }
 
-    /** Проверяем: validateCodeForDate выбрасывает исключение, если код не в ISO 4217. */
+    /** Проверяем: validateCodeForDate выбрасывает исключение, если кода нет ни в ISO 4217, ни в списке ЦБ. */
     public function test_validate_code_for_date_throws_when_not_iso4217(): void
     {
         $mock = Mockery::mock(CbrClientInterface::class);
         // @phpstan-ignore-next-line Mockery dynamic expectation API
-        $mock->shouldReceive('getAvailableCurrencyCodes')->never();
+        $mock->shouldReceive('getAvailableCurrencyCodes')->with('2025-02-20')->andReturn([]);
         $this->app->instance(CbrClientInterface::class, $mock);
 
         $service = app(CurrencyRateService::class);
@@ -40,22 +40,12 @@ final class CurrencyRateServiceTest extends TestCase
         $service->validateCodeForDate('FAKE', '2025-02-20');
     }
 
-    /** Проверяем: validateCodeForDate выбрасывает исключение, если ЦБ не публикует курс на дату. */
-    public function test_validate_code_for_date_throws_when_not_in_cbr_for_date(): void
-    {
-        $mock = Mockery::mock(CbrClientInterface::class);
-        // @phpstan-ignore-next-line Mockery dynamic expectation API
-        $mock->shouldReceive('getAvailableCurrencyCodes')->with('2025-02-20')->andReturn(['USD', 'RUR']);
-        $this->app->instance(CbrClientInterface::class, $mock);
-
-        $service = app(CurrencyRateService::class);
-        $this->expectException(CurrencyCodeNotAllowedException::class);
-        $this->expectExceptionMessage('ЦБ РФ не публикует');
-        $service->validateCodeForDate('CHF', '2025-02-20');
-    }
-
-    /** Проверяем: validateCodeForDate не выбрасывает при валидном коде (ISO + в списке ЦБ). */
-    public function test_validate_code_for_date_passes_when_iso_and_in_cbr(): void
+    /**
+     * Проверяем: validateCodeForDate не выбрасывает при валидном коде:
+     * - код есть в ISO 4217;
+     * - не важно, есть ли он в списке ЦБ на дату (допускается ISO OR CBR).
+     */
+    public function test_validate_code_for_date_passes_when_iso_or_in_cbr(): void
     {
         $mock = Mockery::mock(CbrClientInterface::class);
         // @phpstan-ignore-next-line Mockery dynamic expectation API

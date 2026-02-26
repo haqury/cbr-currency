@@ -58,9 +58,9 @@ final class CurrencyRateQueryServiceTest extends TestCase
         );
 
         $client = Mockery::mock(CbrClientInterface::class);
-        $client->shouldReceive('getRateByDateAndCode')
-            ->with('2025-02-20', 'USD')
-            ->andReturn($dto);
+        /** @var \Mockery\ExpectationInterface $expectation */
+        $expectation = $client->shouldReceive('getRateByDateAndCode');
+        $expectation->with('2025-02-20', 'USD')->andReturn($dto);
         $this->app->instance(CbrClientInterface::class, $client);
 
         $service = app(CurrencyRateQueryService::class);
@@ -114,9 +114,9 @@ final class CurrencyRateQueryServiceTest extends TestCase
         );
 
         $client = Mockery::mock(CbrClientInterface::class);
-        $client->shouldReceive('getRateByDateAndCode')
-            ->with('2025-02-19', 'USD')
-            ->andReturn($dto);
+        /** @var \Mockery\ExpectationInterface $expectation */
+        $expectation = $client->shouldReceive('getRateByDateAndCode');
+        $expectation->with('2025-02-19', 'USD')->andReturn($dto);
         $this->app->instance(CbrClientInterface::class, $client);
 
         $service = app(CurrencyRateQueryService::class);

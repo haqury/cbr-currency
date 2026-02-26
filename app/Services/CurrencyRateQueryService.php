@@ -9,9 +9,6 @@ use App\Models\CurrencyRate;
 use Illuminate\Support\Carbon;
 
 /**
- * Read/query service for currency rates:
- * - find rate for a given date;
- * - find rate for the previous trading day (DB first, then CBR).
  * Сервис чтения курсов:
  * - поиск курса за дату;
  * - поиск курса за предыдущий торговый день (сначала БД, потом ЦБ).
@@ -23,8 +20,6 @@ final class CurrencyRateQueryService
     ) {}
 
     /**
-     * Find rate for the given date (DB first, then CBR with cache).
-     *
      * @return array{rate: float|string, date: string}|null
      */
     public function findRateForDate(string $date, string $currencyCode, string $baseCurrencyCode): ?array
@@ -47,9 +42,6 @@ final class CurrencyRateQueryService
     }
 
     /**
-     * Find rate for the previous trading day (last date < $date with data).
-     * First tries one DB query (index-friendly); if no data in DB, walks back via CBR (cache).
-     *
      * @return array{date: string|null, rate: float|null}
      */
     public function findPreviousTradingDayRate(string $date, string $currencyCode, string $baseCurrencyCode): array

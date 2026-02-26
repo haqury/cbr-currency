@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\ValueObjects;
 
 /**
- * Base currency value object that knows how to normalize codes
- * for storage (DB) and for presentation.
  * Объект базовой валюты, который знает, как нормализовать коды
  * для хранения (БД) и отображения.
  */

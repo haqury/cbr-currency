@@ -11,6 +11,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Fetches CBR rate for one date and one currency, saves via CurrencyRateService (ISO + CBR check, then save or update).
@@ -44,6 +45,11 @@ final class FetchCurrencyRateJob implements ShouldQueue
     {
         $dto = $client->getRateByDateAndCode($this->date, $this->currencyCode);
         if ($dto === null) {
+            Log::info('CBR rate not found for job', [
+                'date' => $this->date,
+                'currency' => $this->currencyCode,
+            ]);
+
             return;
         }
 

@@ -40,15 +40,20 @@ final class RatesController extends Controller
 
         $previous = $this->findPreviousTradingDayRate($date, $currencyCode, $baseForStorage);
 
+        // Дельта считается через bcsub, чтобы избежать погрешностей двоичной плавающей точки.
+        $currentRateValue = (string) $currentRate['rate'];
+        $previousRateValue = $previous['rate'] !== null ? (string) $previous['rate'] : null;
+        $delta = $previousRateValue !== null
+            ? (float) bcsub($currentRateValue, $previousRateValue, 6)
+            : null;
+
         $payload = [
             'date' => $date,
             'currency_code' => $currencyCode,
             'base_currency_code' => $baseCurrencyCode,
-            'rate' => (float) $currentRate['rate'],
+            'rate' => (float) $currentRateValue,
             'previous_trade_date' => $previous['date'],
-            'delta' => $previous['rate'] !== null
-                ? round((float) $currentRate['rate'] - (float) $previous['rate'], 6)
-                : null,
+            'delta' => $delta,
         ];
 
         return new JsonResponse($payload);

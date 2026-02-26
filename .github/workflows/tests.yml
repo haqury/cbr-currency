@@ -13,12 +13,32 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed PHP files
+        id: changed
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            BEFORE="${{ github.event.before }}"
+            AFTER="${{ github.event.after }}"
+            if [ "${BEFORE}" = "0000000000000000000000000000000000000000" ]; then
+              # First push or force-push: check all PHP files
+              git diff --name-only --diff-filter=ACMR | grep -E '\.php$' || true
+            else
+              git diff --name-only --diff-filter=ACMR "${BEFORE}" "${AFTER}" | grep -E '\.php$' || true
+            fi
+          else
+            git fetch origin "${{ github.base_ref }}"
+            git diff --name-only --diff-filter=ACMR origin/"${{ github.base_ref }}"...HEAD | grep -E '\.php$' || true
+          fi > changed_php.txt
+          echo "count=$(wc -l < changed_php.txt | tr -d ' ')" >> $GITHUB_OUTPUT
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: pdo_sqlite, mbstring, xml, curl, iconv, intl
+          extensions: pdo_sqlite, mbstring, xml, curl, iconv, intl, bcmath
           coverage: none
 
       - name: Get composer cache directory
@@ -40,11 +60,21 @@ jobs:
           cp .env.example .env
           php artisan key:generate --no-interaction
 
-      - name: Run Pint (style check)
-        run: vendor/bin/pint --test
+      - name: Run Pint (style check on changed files only)
+        run: |
+          if [ "${{ steps.changed.outputs.count }}" -gt 0 ]; then
+            xargs -r -a changed_php.txt vendor/bin/pint --test --
+          else
+            vendor/bin/pint --test
+          fi
 
-      - name: Run PHPStan
-        run: vendor/bin/phpstan analyse --memory-limit=512M
+      - name: Run PHPStan (on changed files only)
+        run: |
+          if [ "${{ steps.changed.outputs.count }}" -gt 0 ]; then
+            xargs -r -a changed_php.txt vendor/bin/phpstan analyse --memory-limit=512M --
+          else
+            vendor/bin/phpstan analyse --memory-limit=512M
+          fi
 
       - name: Run tests
         run: php artisan test

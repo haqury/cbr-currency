@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Contracts\CbrClientInterface;
 use App\Http\Requests\GetRatesRequest;
-use App\Models\CurrencyRate;
+use App\Services\CurrencyRateQueryService;
+use App\ValueObjects\BaseCurrency;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Carbon;
 
 /**
  * GET /api/rates: returns rate for date, previous trading day and delta.
@@ -17,7 +16,7 @@ use Illuminate\Support\Carbon;
 final class RatesController extends Controller
 {
     public function __construct(
-        private CbrClientInterface $cbrClient,
+        private CurrencyRateQueryService $rates,
     ) {}
 
     /**
@@ -29,16 +28,17 @@ final class RatesController extends Controller
         $currencyCode = $request->validated('currency_code');
         $baseCurrencyCode = $request->validated('base_currency_code');
 
-        $baseForStorage = $baseCurrencyCode === 'RUB' ? 'RUR' : $baseCurrencyCode;
+        $baseCurrency = BaseCurrency::fromInput($baseCurrencyCode);
+        $baseForStorage = $baseCurrency->storage();
 
-        $currentRate = $this->findRateForDate($date, $currencyCode, $baseForStorage);
+        $currentRate = $this->rates->findRateForDate($date, $currencyCode, $baseForStorage);
         if ($currentRate === null) {
             return new JsonResponse([
                 'message' => 'Курс на запрошенную дату не найден.',
             ], 404);
         }
 
-        $previous = $this->findPreviousTradingDayRate($date, $currencyCode, $baseForStorage);
+        $previous = $this->rates->findPreviousTradingDayRate($date, $currencyCode, $baseForStorage);
 
         // Дельта считается через bcsub, чтобы избежать погрешностей двоичной плавающей точки.
         $currentRateValue = (string) $currentRate['rate'];
@@ -50,79 +50,12 @@ final class RatesController extends Controller
         $payload = [
             'date' => $date,
             'currency_code' => $currencyCode,
-            'base_currency_code' => $baseCurrencyCode,
+            'base_currency_code' => $baseCurrency->display(),
             'rate' => (float) $currentRateValue,
             'previous_trade_date' => $previous['date'],
             'delta' => $delta,
         ];
 
         return new JsonResponse($payload);
-    }
-
-    /**
-     * Find rate for the given date (DB first, then CBR with cache).
-     *
-     * @return array{rate: float|string, date: string}|null
-     */
-    private function findRateForDate(string $date, string $currencyCode, string $baseCurrencyCode): ?array
-    {
-        $fromDb = CurrencyRate::forDate($date)
-            ->forCurrency($currencyCode)
-            ->forBaseCurrency($baseCurrencyCode)
-            ->first();
-
-        if ($fromDb !== null) {
-            return ['rate' => $fromDb->rate, 'date' => $date];
-        }
-
-        $dto = $this->cbrClient->getRateByDateAndCode($date, $currencyCode);
-        if ($dto === null) {
-            return null;
-        }
-
-        return ['rate' => $dto->rate, 'date' => $dto->date];
-    }
-
-    /**
-     * Find rate for the previous trading day (last date < $date with data).
-     * First tries one DB query (index-friendly); if no data in DB, walks back via CBR (cache).
-     *
-     * @return array{date: string|null, rate: float|null}
-     */
-    private function findPreviousTradingDayRate(string $date, string $currencyCode, string $baseCurrencyCode): array
-    {
-        $previousRecord = CurrencyRate::forCurrency($currencyCode)
-            ->forBaseCurrency($baseCurrencyCode)
-            ->where('date', '<', $date)
-            ->orderByDesc('date')
-            ->first();
-
-        if ($previousRecord !== null) {
-            $prevDate = Carbon::parse($previousRecord->date)->format('Y-m-d');
-
-            return [
-                'date' => $prevDate,
-                'rate' => (float) $previousRecord->rate,
-            ];
-        }
-
-        // В БД нет более ранних дат — ищем по ЦБ (кэш), перебор дней назад.
-        $dt = Carbon::parse($date);
-        $daysChecked = 0;
-
-        $maxDaysBack = config('cbr.max_days_back', 365);
-
-        while ($daysChecked < $maxDaysBack) {
-            $dt = $dt->subDay();
-            $prevDate = $dt->format('Y-m-d');
-            $daysChecked++;
-
-            $prevRate = $this->findRateForDate($prevDate, $currencyCode, $baseCurrencyCode);
-            if ($prevRate !== null) {
-                return ['date' => $prevRate['date'], 'rate' => (float) $prevRate['rate']];
-            }
-        }
-
-        return ['date' => null, 'rate' => null];
     }
 }

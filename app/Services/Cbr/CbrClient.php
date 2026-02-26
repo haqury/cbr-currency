@@ -6,7 +6,7 @@ namespace App\Services\Cbr;
 
 use App\Contracts\CbrClientInterface;
 use App\Services\Cbr\Dto\CbrRateDto;
-use GuzzleHttp\Client;
+use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -26,6 +26,10 @@ final class CbrClient implements CbrClientInterface
 
     /** TTL in seconds (24 hours; historical data does not change). */
     private const int CACHE_TTL = 86400;
+
+    public function __construct(
+        private ClientInterface $httpClient,
+    ) {}
 
     /**
      * Fetch all rates for the given date (Y-m-d).
@@ -96,8 +100,6 @@ final class CbrClient implements CbrClientInterface
         $url = sprintf(self::URL_TEMPLATE, $dateReq);
 
         $verifySsl = config('cbr.verify_ssl', true);
-
-        $client = new Client(['timeout' => 15]);
         $requestOptions = [
             'verify' => $verifySsl,
         ];
@@ -109,7 +111,7 @@ final class CbrClient implements CbrClientInterface
         }
 
         try {
-            $response = $client->get($url, $requestOptions);
+            $response = $this->httpClient->request('GET', $url, $requestOptions);
         } catch (GuzzleException $e) {
             Log::warning('CBR request failed', ['url' => $url, 'message' => $e->getMessage()]);
             throw $e;

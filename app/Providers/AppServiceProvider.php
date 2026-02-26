@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Contracts\CbrClientInterface;
 use App\Services\Cbr\CbrClient;
+use GuzzleHttp\Client;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -18,7 +19,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->bind(CbrClientInterface::class, CbrClient::class);
+        $this->app->bind(CbrClientInterface::class, function (): CbrClient {
+            $httpClient = new Client(['timeout' => 15]);
+
+            return new CbrClient($httpClient);
+        });
     }
 
     /**

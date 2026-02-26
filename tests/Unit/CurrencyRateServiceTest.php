@@ -30,6 +30,7 @@ final class CurrencyRateServiceTest extends TestCase
     public function test_validate_code_for_date_throws_when_not_iso4217(): void
     {
         $mock = Mockery::mock(CbrClientInterface::class);
+        // @phpstan-ignore-next-line Mockery dynamic expectation API
         $mock->shouldReceive('getAvailableCurrencyCodes')->never();
         $this->app->instance(CbrClientInterface::class, $mock);
 
@@ -43,6 +44,7 @@ final class CurrencyRateServiceTest extends TestCase
     public function test_validate_code_for_date_throws_when_not_in_cbr_for_date(): void
     {
         $mock = Mockery::mock(CbrClientInterface::class);
+        // @phpstan-ignore-next-line Mockery dynamic expectation API
         $mock->shouldReceive('getAvailableCurrencyCodes')->with('2025-02-20')->andReturn(['USD', 'RUR']);
         $this->app->instance(CbrClientInterface::class, $mock);
 
@@ -56,6 +58,7 @@ final class CurrencyRateServiceTest extends TestCase
     public function test_validate_code_for_date_passes_when_iso_and_in_cbr(): void
     {
         $mock = Mockery::mock(CbrClientInterface::class);
+        // @phpstan-ignore-next-line Mockery dynamic expectation API
         $mock->shouldReceive('getAvailableCurrencyCodes')->with('2025-02-20')->andReturn(['USD', 'RUR']);
         $this->app->instance(CbrClientInterface::class, $mock);
 
@@ -71,6 +74,7 @@ final class CurrencyRateServiceTest extends TestCase
         $dto = new CbrRateDto($date, 'USD', 98.5, 1, 'RUR');
 
         $mock = Mockery::mock(CbrClientInterface::class);
+        // @phpstan-ignore-next-line Mockery dynamic expectation API
         $mock->shouldReceive('getAvailableCurrencyCodes')->with($date)->andReturn(['USD', 'RUR']);
         $this->app->instance(CbrClientInterface::class, $mock);
 

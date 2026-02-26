@@ -136,4 +136,18 @@ GET /api/rates?date=2025-02-20&currency_code=USD&base_currency_code=RUR
 
 Локально: `php artisan test` (нужны PHP 8.2+ и расширения из `composer.json`; БД и очередь в тестах — SQLite in-memory и sync). Форматирование кода: `composer run lint`. Статический анализ: `composer run stan`.
 
-В репозитории настроен **GitHub Actions**: на каждый push и pull request в `main`/`master` запускаются Pint (проверка стиля), PHPStan и тесты (`.github/workflows/tests.yml`). Окружение: PHP 8.2, без Docker и без внешних сервисов.
+В репозитории настроен **GitHub Actions**: на каждый push и pull request в `main`/`master` запускаются Pint (проверка стиля), PHPStan и тесты (`.github/workflows/tests.yml`). Окружение: PHP 8.4, без Docker.
+
+---
+
+## Перед коммитом: 
+
+Чтобы локально прогнать **то же самое**, что делает CI, используйте контейнер **app** (там уже есть PHP и зависимости из `composer.lock`). Так вы избежите расхождений «у меня проходит, в CI падает».
+
+```bash
+docker-compose up -d
+docker-compose exec app vendor/bin/pint --test
+docker-compose exec app vendor/bin/pint
+docker-compose exec app vendor/bin/phpstan analyse --memory-limit=512M
+docker-compose exec app php artisan test
+```

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Exceptions\CurrencyCodeNotAllowedException;
 use App\Jobs\FetchCurrencyRateJob;
+use App\Services\CurrencyRateService;
 use Illuminate\Console\Command;
 
 /**
@@ -29,7 +31,7 @@ final class SyncCurrencyHistoryCommand extends Command
      */
     protected $description = 'Dispatch jobs to sync CBR currency rates for the given code over the last N days';
 
-    public function handle(): int
+    public function handle(CurrencyRateService $currencyRateService): int
     {
         $code = $this->argument('code');
         $days = (int) $this->option('days');
@@ -43,6 +45,15 @@ final class SyncCurrencyHistoryCommand extends Command
         $code = strtoupper(trim($code));
         if ($code === '') {
             $this->error('Currency code cannot be empty.');
+
+            return self::FAILURE;
+        }
+
+        $today = (new \DateTimeImmutable('today'))->format('Y-m-d');
+        try {
+            $currencyRateService->validateCodeForDate($code, $today);
+        } catch (CurrencyCodeNotAllowedException $e) {
+            $this->error($e->getMessage());
 
             return self::FAILURE;
         }

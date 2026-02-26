@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Rules\Iso4217CurrencyCode;
 use Illuminate\Foundation\Http\FormRequest;
 
 final class GetRatesRequest extends FormRequest
@@ -28,13 +29,13 @@ final class GetRatesRequest extends FormRequest
     }
 
     /**
-     * @return array<string, array<int, string>>
+     * @return array<string, array<int, string|\Illuminate\Validation\Rule|\Illuminate\Contracts\Validation\ValidationRule>>
      */
     public function rules(): array
     {
         return [
             'date' => ['required', 'date_format:Y-m-d'],
-            'currency_code' => ['required', 'string', 'max:10'],
+            'currency_code' => ['required', 'string', 'max:10', new Iso4217CurrencyCode],
             'base_currency_code' => ['sometimes', 'string', 'max:10', 'in:RUR,RUB'],
         ];
     }

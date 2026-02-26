@@ -69,6 +69,22 @@ final class CbrClient implements CbrClientInterface
     }
 
     /**
+     * Return list of currency codes published by CBR for the given date (uses same cache as getRatesByDate).
+     *
+     * @return list<string>
+     */
+    public function getAvailableCurrencyCodes(string $date): array
+    {
+        $rates = $this->getRatesByDate($date);
+        $codes = [];
+        foreach ($rates as $dto) {
+            $codes[] = $dto->currencyCode;
+        }
+
+        return $codes;
+    }
+
+    /**
      * Perform HTTP request, convert encoding, parse XML, return DTOs.
      *
      * @param  string  $date  Y-m-d

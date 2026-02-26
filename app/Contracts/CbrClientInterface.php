@@ -28,4 +28,12 @@ interface CbrClientInterface
      * @param  string  $currencyCode  e.g. USD
      */
     public function getRateByDateAndCode(string $date, string $currencyCode): ?CbrRateDto;
+
+    /**
+     * Return list of currency codes published by CBR for the given date (from cached rates).
+     *
+     * @param  string  $date  Date in Y-m-d format
+     * @return list<string>
+     */
+    public function getAvailableCurrencyCodes(string $date): array;
 }

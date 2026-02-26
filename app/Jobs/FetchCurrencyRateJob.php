@@ -5,16 +5,15 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Contracts\CbrClientInterface;
-use App\Models\CurrencyRate;
+use App\Services\CurrencyRateService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Carbon;
 
 /**
- * Fetches CBR rate for one date and one currency, saves to currency_rates.
+ * Fetches CBR rate for one date and one currency, saves via CurrencyRateService (ISO + CBR check, then save or update).
  * Idempotent: updateOrCreate by (date, currency_code, base_currency_code).
  * Connection берётся из config (QUEUE_CONNECTION). Retry при временной недоступности ЦБ.
  */
@@ -41,24 +40,13 @@ final class FetchCurrencyRateJob implements ShouldQueue
         return [60, 300];
     }
 
-    public function handle(CbrClientInterface $client): void
+    public function handle(CbrClientInterface $client, CurrencyRateService $currencyRateService): void
     {
         $dto = $client->getRateByDateAndCode($this->date, $this->currencyCode);
         if ($dto === null) {
             return;
         }
 
-        $date = Carbon::parse($dto->date)->startOfDay();
-        CurrencyRate::updateOrCreate(
-            [
-                'date' => $date,
-                'currency_code' => $dto->currencyCode,
-                'base_currency_code' => $dto->baseCurrencyCode,
-            ],
-            [
-                'rate' => $dto->rate,
-                'nominal' => $dto->nominal,
-            ]
-        );
+        $currencyRateService->saveOrUpdateFromDto($dto);
     }
 }

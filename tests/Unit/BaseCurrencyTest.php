@@ -49,4 +49,3 @@ final class BaseCurrencyTest extends TestCase
         BaseCurrency::fromInput('  ');
     }
 }
-

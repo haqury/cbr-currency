@@ -58,6 +58,7 @@ final class CurrencyRateQueryServiceTest extends TestCase
         );
 
         $client = Mockery::mock(CbrClientInterface::class);
+        // @phpstan-ignore-next-line Mockery dynamic expectation API
         $client->shouldReceive('getRateByDateAndCode')
             ->once()
             ->with('2025-02-20', 'USD')
@@ -115,6 +116,7 @@ final class CurrencyRateQueryServiceTest extends TestCase
         );
 
         $client = Mockery::mock(CbrClientInterface::class);
+        // @phpstan-ignore-next-line Mockery dynamic expectation API
         $client->shouldReceive('getRateByDateAndCode')
             ->once()
             ->with('2025-02-19', 'USD')
@@ -145,4 +147,3 @@ final class CurrencyRateQueryServiceTest extends TestCase
         $this->assertNull($result['rate']);
     }
 }
-

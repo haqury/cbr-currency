@@ -17,9 +17,12 @@ final class Iso4217CurrencyCode implements ValidationRule
     {
         if (! is_string($value)) {
             $fail(__('validation.string', ['attribute' => $attribute]));
+
             return;
         }
+
         $validator = app(CurrencyCodeValidator::class);
+
         if (! $validator->isValid($value)) {
             $fail('Код валюты должен быть из справочника ISO 4217 (допускается RUR).');
         }

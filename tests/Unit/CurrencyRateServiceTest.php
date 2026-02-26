@@ -27,7 +27,7 @@ final class CurrencyRateServiceTest extends TestCase
     }
 
     /** Проверяем: validateCodeForDate выбрасывает исключение, если код не в ISO 4217. */
-    public function test_validateCodeForDate_throws_when_not_iso4217(): void
+    public function test_validate_code_for_date_throws_when_not_iso4217(): void
     {
         $mock = Mockery::mock(CbrClientInterface::class);
         $mock->shouldReceive('getAvailableCurrencyCodes')->never();
@@ -40,7 +40,7 @@ final class CurrencyRateServiceTest extends TestCase
     }
 
     /** Проверяем: validateCodeForDate выбрасывает исключение, если ЦБ не публикует курс на дату. */
-    public function test_validateCodeForDate_throws_when_not_in_cbr_for_date(): void
+    public function test_validate_code_for_date_throws_when_not_in_cbr_for_date(): void
     {
         $mock = Mockery::mock(CbrClientInterface::class);
         $mock->shouldReceive('getAvailableCurrencyCodes')->with('2025-02-20')->andReturn(['USD', 'RUR']);
@@ -53,7 +53,7 @@ final class CurrencyRateServiceTest extends TestCase
     }
 
     /** Проверяем: validateCodeForDate не выбрасывает при валидном коде (ISO + в списке ЦБ). */
-    public function test_validateCodeForDate_passes_when_iso_and_in_cbr(): void
+    public function test_validate_code_for_date_passes_when_iso_and_in_cbr(): void
     {
         $mock = Mockery::mock(CbrClientInterface::class);
         $mock->shouldReceive('getAvailableCurrencyCodes')->with('2025-02-20')->andReturn(['USD', 'RUR']);
@@ -65,7 +65,7 @@ final class CurrencyRateServiceTest extends TestCase
     }
 
     /** Проверяем: saveOrUpdateFromDto сохраняет запись при валидном DTO (ISO + ЦБ на дату). */
-    public function test_saveOrUpdateFromDto_saves_when_valid(): void
+    public function test_save_or_update_from_dto_saves_when_valid(): void
     {
         $date = '2025-02-20';
         $dto = new CbrRateDto($date, 'USD', 98.5, 1, 'RUR');

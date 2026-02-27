@@ -9,7 +9,7 @@
 1. `docker-compose up -d`
 2. `docker-compose exec app php artisan key:generate` (если ещё не делали)
 3. `docker-compose exec app php artisan migrate`
-4. `docker-compose exec app php artisan app:sync-currency-history USD --days=7`
+4. `docker-compose exec app php artisan app:sync-currency-history USD --days=180`
 5. Подождать ~30 сек, пока воркер обработает задачи
 6. `curl "http://localhost:8080/api/rates?date=2025-02-20&currency_code=USD"`
 
